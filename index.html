@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Human Qualification System</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#020617;color:#e2e8f0;font-family:Segoe UI,Arial,sans-serif;min-height:100vh;overflow-x:hidden}
+canvas{position:fixed;inset:0;opacity:.6}
+.wrap{position:relative;z-index:2;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:20px 12px}
+.card{width:min(920px,94vw);background:rgba(15,23,42,.96);border:1px solid #334155;border-radius:20px;padding:24px 22px;box-shadow:0 0 50px rgba(59,130,246,.22)}
+.topbar{display:flex;justify-content:space-between;gap:10px;font-size:.78rem;color:#94a3b8;border-bottom:1px solid #1e293b;padding-bottom:12px;margin-bottom:16px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:99px;background:#22c55e;margin-right:6px;box-shadow:0 0 8px #22c55e}
+h1,h2{text-align:center;color:#60a5fa;margin:10px 0 14px}
+h1{font-size:1.45rem;letter-spacing:.06em}
+.step{text-align:center;font-size:.78rem;color:#94a3b8;letter-spacing:.15em;margin-bottom:6px}
+.c{text-align:center}
+.muted{color:#94a3b8;font-size:.92rem;text-align:center}
+.btn{background:#16a34a;color:#fff;border:0;padding:14px 22px;border-radius:10px;cursor:pointer;margin:8px 5px 0;font-size:1rem;min-height:48px}
+.btn.secondary{background:#334155}
+input[type=text]{width:min(360px,90%);padding:13px;border-radius:10px;border:1px solid #334155;background:#020617;color:#fff;margin:6px 0}
+input[type=file]{margin:10px 0;color:#cbd5e1;max-width:100%}
+.progress{height:14px;background:#1e293b;border-radius:99px;overflow:hidden;margin:14px 0}
+.bar{height:100%;width:0;background:linear-gradient(90deg,#22c55e,#3b82f6)}
+.terminal{background:#020617;padding:16px;border-radius:12px;min-height:140px;color:#4ade80;font-family:Consolas,monospace;white-space:pre-line;line-height:1.65;border:1px solid #1e293b;text-align:left}
+.score{margin:10px 0}
+.score-top{display:flex;justify-content:space-between;font-size:.9rem;margin-bottom:6px}
+.score-bg{height:10px;background:#1e293b;border-radius:99px;overflow:hidden}
+.score-fill{height:100%;width:0;background:linear-gradient(90deg,#38bdf8,#22c55e);transition:width 1.2s ease}
+.photo-wrap{position:relative;display:block;width:fit-content;margin:14px auto}
+.photo{max-width:260px;display:block;border-radius:12px;border:1px solid #334155}
+.photo-wrap::after{content:'';position:absolute;left:0;right:0;height:2px;background:#22c55e;box-shadow:0 0 14px #22c55e;animation:scan 2.2s linear infinite}
+@keyframes scan{0%{top:0}50%{top:calc(100% - 2px)}100%{top:0}}
+.big{font-size:2rem;color:#22c55e;text-align:center;font-weight:700;margin:12px 0}
+.sealed{border:1px dashed #475569;border-radius:12px;padding:18px;text-align:center;color:#94a3b8;margin:14px 0;background:#020617}
+.hidden{display:none}
+.hint{text-align:center;font-size:.78rem;color:#64748b;margin-top:14px}
+</style>
+</head>
+<body>
+<canvas id="m"></canvas>
+<div class="wrap"><div class="card">
+<div class="topbar"><span><span class="dot"></span>LIVE • SECURE UPLINK TLS 1.3</span><span id="sess">HQS v7.0 • NODE eu-west-4</span></div>
+<div id="app"></div>
+<div class="hint">Druk op CONTINUE wanneer je klaar bent met lezen — geen enkel scherm gaat vanzelf verder.</div>
+</div></div>
+<script>
+const cv=document.getElementById('m'),x=cv.getContext('2d');
+function rs(){cv.width=innerWidth;cv.height=innerHeight}
+rs(); onresize=rs;
+let drops=[]; for(let i=0;i<110;i++) drops.push(Math.random()*1000);
+setInterval(()=>{x.fillStyle='rgba(2,6,23,.18)';x.fillRect(0,0,cv.width,cv.height);x.fillStyle='#15803d';x.font='12px monospace';for(let i=0;i<drops.length;i++){x.fillText(Math.random()>0.5?'1':'0',i*14,drops[i]*14);if(drops[i]*14>cv.height&&Math.random()>0.976)drops[i]=0;drops[i]++;}},60);
+let img='',name='Candidate';
+const app=document.getElementById('app');
+const qr=new URLSearchParams(location.search);
+if(qr.get('n')) name=qr.get('n');
+const sess=Math.random().toString(16).slice(2,10).toUpperCase();
+document.getElementById('sess').textContent='HQS v7.0 • '+sess+' • eu-west-4';
+function v(h){app.innerHTML=h; window.scrollTo(0,0);}
+function beep(){try{const a=new (window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator();const g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;g.gain.value=0.04;o.start();o.stop(a.currentTime+0.12);}catch(e){}}
+function typeInto(id,txt,cb){const el=document.getElementById(id);el.innerHTML='';let i=0;const t=setInterval(()=>{el.innerHTML+=txt[i++]||'';if(i>txt.length){clearInterval(t);beep();if(cb)cb();}},22);}
+function runStep(stepLabel,title,lines,btnLabel,nextFn){
+v(`<div class="step">${stepLabel}</div><h2>${title}</h2><div class="progress"><div id="b" class="bar"></div></div><div id="t" class="terminal">Initialiseren...</div><div class="c"><button id="nextBtn" class="btn hidden">${btnLabel}</button></div>`);
+let p=0;const bar=document.getElementById('b');
+const iv=setInterval(()=>{p+=1.1;if(p>100)p=100;bar.style.width=p+'%';if(p>=100){clearInterval(iv);typeInto('t',lines,()=>{const b2=document.getElementById('nextBtn');b2.classList.remove('hidden');b2.onclick=nextFn;});}},45);
+}
+v(`<div class="step">MODULE 01 / 07</div><h1>HUMAN QUALIFICATION SYSTEM</h1><p class="muted">Controlled demonstration • Computer Vision</p><p class="c">Upload een foto om de demonstratie te starten.</p><div class="c"><input id="f" type="file" accept="image/*" capture="environment"><br><input id="n" type="text" placeholder="Voor- en achternaam (verplicht)" autocomplete="name"><br><button class="btn" onclick="start()">START SCAN</button></div>`);
+document.getElementById('n').value=(name==='Candidate'?'':name);
+function start(){const f=document.getElementById('f').files[0];if(!f){alert('Upload eerst een foto');return;}const raw=(document.getElementById('n').value||'').trim();const parts=raw.split(/\s+/);if(parts.length<2||parts[0].length<2||parts[1].length<2){alert('Vul voor- en achternaam in om verder te gaan');return;}img=URL.createObjectURL(f);name=raw;screen1();}
+function screen1(){runStep('STAP 1 / 7','IMAGE ACQUISITION',`> secure uplink established (ping 38ms)\n> sessie ${sess} • node eu-west-4\n> Gezicht gedetecteerd\n> Achtergrond gevalideerd\n> Beeldkwaliteit: voldoende voor analyse`,'CONTINUE →',screen2);}
+function screen2(){runStep('STAP 2 / 7','FEATURE EXTRACTION',`> Pose estimation voltooid\n> 68 gezichtspunten gemarkeerd\n> Spraak- en gedragsvectoren opgebouwd\n> Dataset klaar voor model`,'CONTINUE →',screen3);}
+function screen3(){
+v(`<div class="step">STAP 3 / 7</div><h2>BEHAVIOURAL MODEL</h2><p class="muted">Gewogen profiel — sterk, maar geloofwaardig.</p><div id="scores"></div><div class="c"><button id="nextBtn" class="btn hidden">CONTINUE EVALUATION →</button></div>`);
+const data=[['Betrouwbaarheid',91],['Loyaliteit',89],['Probleemoplossend vermogen',87],['Sociale stabiliteit',84],['Geduld',82],['Humor',76]];
+const box=document.getElementById('scores');
+box.innerHTML=data.map(d=>`<div class="score"><div class="score-top"><span>${d[0]}</span><span>${d[1]}%</span></div><div class="score-bg"><div class="score-fill" data-w="${d[1]}"></div></div></div>`).join('');
+setTimeout(()=>{document.querySelectorAll('.score-fill').forEach(el=>el.style.width=el.dataset.w+'%');const b=document.getElementById('nextBtn');b.classList.remove('hidden');b.onclick=screen4;},400);
+}
+function screen4(){runStep('STAP 4 / 7','GLOBAL COMPARISON MODEL',`> Referentiegroep geladen\n> Miljarden profielen vergeleken\n> 3 profielen bovengemiddeld\n> Ranglijst beschikbaar`,'SHOW RESULTS →',screen5);}
+function screen5(){v(`<div class="step">STAP 5 / 7</div><h2>CANDIDATE RANKING</h2><div class="terminal">#3  Standaard profiel .... 68%\n#2  Zeer geschikt ........ 87%\n#1  GECLASSIFICEERD ..... [VERSLEUTELD]</div><p class="muted">Rang 1 vereist handmatige ontgrendeling.</p><div class="c"><button class="btn" onclick="screen6()">REVEAL →</button></div>`);}
+function screen6(){v(`<div class="step">STAP 6 / 7</div><h2>IDENTITY UNLOCKED</h2><div class="big">${name}</div><p class="c">Betrouwbaarheid 93.4%</p><div class="photo-wrap"><img class="photo" src="${img}"></div><div class="sealed">AANVULLENDE MODULE BESCHIKBAAR<br><b>Status: SEALED</b><br>Inhoud vereist autorisatie van de kandidaat.</div><div class="c"><button class="btn" onclick="screen7()">VIEW SEALED MODULE →</button></div>`);}
+function screen7(){runStep('STAP 7 / 7','SEALED ASSIGNMENT MODULE',`> Neurale analyse voltooid\n> 127 lagen geladen\n> Bias-correctie toegepast\n> Resultaat: VERZEGELD\n>\n> Inhoud wordt pas getoond bij acceptatie.`,'TOON FINALE BERICHT →',screen8);}
+function screen8(){v(`<div class="step">FINAL SYSTEM REPORT</div><h2>DEFINITIEF ADVIES</h2><div class="photo-wrap"><img class="photo" src="${img}"></div><p class="c">Na uitgebreide analyse beveelt het systeem <b>${name}</b> aan.</p><div class="big">Wil jij de peter worden van ons kindje?</div><div class="c"><button class="btn" onclick="accept()">JA, MET VEEL PLEZIER</button><button class="btn" onclick="accept()">ABSOLUUT</button><br><button class="btn secondary" onclick="accept()">NATUURLIJK</button><button class="btn secondary" onclick="accept()">IK DACHT AL DAT DIT ERVAN ZOU KOMEN</button></div>`);}
+function accept(){
+let conf='';for(let i=0;i<140;i++){conf+=`<span style="position:fixed;left:${Math.random()*100}vw;top:${Math.random()*100}vh;color:hsl(${Math.random()*360},100%,60%);z-index:5">●</span>`;}
+const txt=encodeURIComponent(`MISSION ACCEPTED - ${name} is officieel PETER!`);
+v(conf+`<div class="big">GODFATHER ACTIVATED</div><h2>MISSION ACCEPTED</h2><p class="c">Toegewezen rol: <b>PETER</b><br>Status SUCCESS • Confidence 100%</p><h3 class="c">Error 404: Better Godfather Not Found.</h3><div class="c"><a href="https://wa.me/?text=${txt}"><button class="btn">DEEL VIA WHATSAPP</button></a></div>`);
+}
+</script>
+</body>
+</html>
